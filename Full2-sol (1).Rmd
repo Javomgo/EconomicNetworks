@@ -1,0 +1,132 @@
+---
+title: "Handout 2"
+output: html_document
+---
+
+**Students' names**
+
+* Javier Ortiz Montenegro
+* Immanuel Mbithi Mutua
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=7,  fig.align="center", echo=TRUE, warning=FALSE, message=FALSE) 
+##cambiad a echo=FALSE si queréis esconder el código##
+library(igraph)
+library(printr)
+library(knitr)
+```
+
+
+
+Consider the graph in Figure 1.
+
+```{r pressure, echo=FALSE, fig.cap="Figure 1", out.width = '30%'}
+knitr::include_graphics("dibufull1.png")
+```
+
+*1)* Enter it as a graph $G$. The letters should be the names of the nodes (an attribute). Plot it.
+
+```{r}
+G<-graph(c("A","E","E","H","H","F","F","G","F","D","F","C","G","D","D","C","C","B","B","D"), directed=F)
+plot (G)
+```
+
+*2)* Oops! I forgot an arc connecting nodes *A* and *F*. Add it to $G$. Plot the new graph $G$.
+
+
+```{r}
+G<-G+edge(c("A","F"))
+plot(G)
+```
+
+
+*3)* Obtain its vectors of edges and nodes.
+
+
+```{r}
+E(G)
+V(G)
+
+```
+
+*4)* Obtain the adjacency matrix of $G$.
+
+
+```{r}
+get.adjacency(G)
+```
+
+*5)* Define a new graph $H$ from this adjacency matrix. Plot it. Check that it is isomorphic to $G$.
+
+
+```{r}
+H<-graph_from_adjacency_matrix(G[], "undirected")
+plot(H)
+isomorphic(G,H)
+```
+
+*6)* Find the order, the size and the density of $G$. Name them $n$, $m$ and $dens$ and call their values in the sentence following the chunk.
+
+```{r}
+n<-gorder(G)
+m<-gsize(G)
+dens<-graph.density(G)
+```
+
+The order of $G$ is `r n`, its size is `r m`, and its density is `r dens`.
+
+*7)* Find the node, or the nodes, of largest degree in $G$. Check on the plot that the answer is right. You should be able to give a function that produces the answer and call it **max.deg**, without having to check by hand the vector of degrees, and to call its value in the sentence following the chunk.
+
+```{r}
+max.deg=V(G)$name[degree(G)==max(degree(G))]
+max.deg
+```
+
+The node(s) of largest degree is (are) `r max.deg`.
+
+
+
+*8)* Now define from scratch a directed graph $G_0$ from  the graph in Figure 1, considering each arc oriented in the alphabpetic order of its ends.
+
+```{r}
+G_0<-graph(c("A","E","E","H","F","H","F","G","D","F","C","F","D","G","C","D","B","C","B","D"))
+plot (G_0)
+```
+
+*9)* Obtain its vectors of arcs and nodes.
+
+```{r}
+E(G_0)
+V(G_0)
+```
+
+*10)* Obtain the adjacency matrix of $G_0$.
+
+```{r}
+get.adjacency(G_0)
+```
+
+*11)* Remove the node *D* from $G_0$, and add to it new arcs between its neighbors, corresponding to directed paths of length 2 in $G_0$ traversing *D*. Plot the resulting graph.
+
+```{r}
+G_0=delete_vertices(G_0,c("D"))
+G_0=add.edges(G_0,c("B","G","B","F","C","G","C","F"))
+plot(G_0)
+```
+
+*12)* If the resulting digraph is not simple, simplify it and plot it again. Let $G_1$ be the resulting graph.
+   
+```{r}
+G_1=simplify(G_0)
+plot(G_1)
+```
+
+*13)* Find the node, or the nodes, of largest in-degree and of largest out-degree in $G_1$. 
+
+
+```{r}
+max.indegree=max.deg=V(G_1)$name[degree(G_1, mode="in")==max(degree(G_1, mode="in"))]
+max.outdegree=max.deg=V(G_1)$name[degree(G_1, mode="out")==max(degree(G_1, mode="out"))]
+```
+
+The node(s) of largest in-degree is(are)  `r max.indegree` and the node(s) of largest out-degree is(are) `r max.outdegree`.

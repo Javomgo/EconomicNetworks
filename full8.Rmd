@@ -1,0 +1,202 @@
+---
+title: "Handout 8"
+output: html_document
+---
+
+* Name 1: Victor Antonio Marín Juarros
+* Name 2: David Sanchez Rodriguez
+* Name 3: Javier Ortiz Montenegro
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=5, fig.height=5, fig.align="center", echo=TRUE, warning=FALSE, message=FALSE,autodep = TRUE,cache=TRUE)
+library(knitr)
+library(printr)
+library(igraph)
+library(centiserve)
+library(poweRlaw)
+```
+
+The file **WikiVote.txt** is a data table containing votations  on promotion to administratorship of Wikipedia (till January 2008). Each arc *(x,y)* in it means that user *x* voted on *y* becoming Wikipedia administrator. More details at \url{http://snap.stanford.edu/data/wiki-Vote.html}.
+ 
+Download it on your computer and upload it to R as a dataframe.
+Define a directed graph **DW** with this list of arcs.
+
+```{r}
+DW = data.frame(read.csv("WikiVote.txt",sep="\t"))
+DW = graph_from_data_frame(d=DW, directed=TRUE)
+```
+
+*a)* Has **DW** any self-loops or multiple arcs? How many? What do they mean, in the context of this network? If any, remove them and still call **DW** the resulting network.
+
+```{r}
+is_simple(DW)
+```
+
+El grafo es simple, por lo que no presenta arcos de nodos hacia ellos mismos ni arcos múltiples. En caso de que hubiera alguno, se procedería a eliminarlos de la siguiente manera:
+
+```{r}
+DW = simplify(DW)
+```
+
+En el contexto de este dataset, los arcos hacia un mismo nodo significaría que dichos usuarios se han votado a si mismos para el cargo de administrador, lo cual sería algo poco inválido.
+
+*b)* What are the order, size, and density of **DW**? 
+
+```{r}
+
+orden = gorder(DW)
+tamany = gsize(DW)
+dens = round(edge_density(DW),3)
+
+```
+
+* Orden: `r orden`   
+* Tamaño: `r tamany`    
+* Densidad: `r dens` (se trata de un grafo disperso)   
+
+*c)* Has **DW** a giant weakly connected component? And a giant strongly connected component? What do they mean, in the context of this network?
+
+Existen `r clusters(DW)$no` componentes conexas, en la que podemos ver una componente fuertemente conexa gigante, con `r max(clusters(DW, "strong")$csize)` nodos:   
+
+```{r}
+
+plot(clusters(DW, "strong")$csize,, ylab = "Usuarios",main = "Usuarios en componentes conexas fuertes", xlab = "Componentes")
+
+```
+
+En este contexto las componentes fuertemente conexas se pueden interpretar como un 'círculo' de votaciones, es decir que desde cualquiera de los usuarios de la componente se puede llegar, mediante almenos un camino, hasta cualquier otro usuario de la componente, a causa de la forma en la que se han votado. 
+
+Asimismo, podemos ver la existencia de una componente conexa débil gigante, la cual abarca `r max(clusters(DW, "weak")$csize)` nodos:    
+
+```{r}
+
+plot(clusters(DW, "weak")$csize, ylab = "Usuarios",main = "Usuarios en componentes conexas d?biles", xlab = "Componentes")
+
+```
+
+Estas componentes conexas débiles lo que nos indican es que, si ignoramos la dirección de los arcos y los tratamos con aristas, es posible llegar desde cualquiera de los miembros de la componente hasta cualquier otro. Esto significa que los usuarios que ya han votado a alguien de este grupo, no han sido votados ni por los que han votado, ni los votados por los que él ha votado.
+
+*d)* Has **DW** any pairs of mutual arcs? How many?  What do they mean, in the context of this network?
+
+```{r}
+mutual = table(which_mutual(DW, es = E(DW)))[[2]]
+```
+
+El grafo tiene `r mutual` conexiones mutuas, lo que supone que un `r reciprocity(DW)*100`% de los usuarios se han votado mutuamente. En este contexto podría significar que son usuarios que se han puesto de acuerdo para votarse el uno al otro, o simplemente que ambos se consideran aptos para ejercer la posición (probablemente se trate de amigos). 
+
+*e)* For both the in-degrees and the out-degrees, compute their range, mode, mean, median, and standard deviation.  What do they tell you? You should find that there is at least one statistic that takes the same value for both types of degree. Is it casual, or the equalities found always hold?
+
+```{r echo=FALSE}
+
+in.degrees <- degree(DW, mode="in")
+out.degrees <- degree(DW) - in.degrees
+
+tabla = data.frame(rbind(names(sort.int(in.degrees,decreasing = TRUE)[1]), round(mean(in.degrees),2),median(in.degrees),round(sd(in.degrees),2)), rbind(names(sort.int(out.degrees,decreasing = TRUE)[1]),round(mean(out.degrees),2),median(out.degrees),round(sd(out.degrees),2)))[1:2]
+
+rownames(tabla) = c("Moda","Media","Mediana","Desviación")
+colnames(tabla) = c("In-Degrees", "Out-Degrees")
+
+tabla
+
+```
+
+El rango para los grados de entreda y salida son los siguientes:    
+
+* In-Degree: `r range(in.degrees)`    
+* Out-Degree: `r range(out.degrees)`   
+
+La media de ambos es la misma ya que si una votación sale de un usuario, tiene que entrar en otro, y dado que el número de nodos sigue siendo el mismo, la media es la misma. La diferencia radica en cuántas votaciones recibe cada usuario y cuántas votaciones realiza, diferencia que se plasma en el rango, mediana y desviación.    
+
+Tanto el rango como la desviación y la mediana nos indican que hay una gran disparidad en lo que respecta tanto a los votos recibidos por los usuarios, como a los votos dados por los usuarios. En general se puede decir que ha habido más diversidad de usuarios en la participación de la votación (`r sum(out.degrees > 0)`), que diversidad en los usuarios que han recibido estas votaciones (`r sum(in.degrees > 0)`), lo que significa que muchos usuarios han votado a un conjunto más reducido de usuarios.   
+
+Cabe destacar que han habido muchos usuarios que han votado a más un usuario (`r sum(out.degrees > 1)`), llegando a la friolera de un usuarios votando a otros `r range(out.degrees)[2]` usuarios.
+
+*f)* Do the in-degree and out-degree distributions of this network look binomial or power-law? Answer this question with suitable plots or goodness-of-fit-tests. 
+
+```{r}
+fit_power = function(graph,modo) {
+  datos = table(degree(graph, mode = modo))
+  m_pl = displ$new(datos)
+  m_pl$setXmin(estimate_xmin(m_pl))
+  plot(m_pl)
+  lines(m_pl, col=2)
+  bs_p = bootstrap_p(m_pl)
+  paste("p-value: ", bs_p$p)
+  
+}
+set.seed(111)
+fit_power(DW,"in")
+```
+
+Haciendo uso de bootsrap para comprobar si la distribución de los in-degrees sigue una forma power-law, obteniendo un valor p inferior a 0.05, por lo que se rechaza la hipótesis nula, los in-degrees no siguen una forma power-law.
+
+```{r}
+set.seed(111)
+fit_power(DW,"out")
+```
+
+En el caso de los out-degrees, pese a que la forma visualizada presenta una forma bastante similar a la power-law, la significación es de un valor p 0.05, por lo que se rechazaría la hipótesis nula, de forma que no sigue la forma power-law.   
+
+*g)*  What directed transitivity do you consider most interesting in this network? Justify your answer, compute its value, and comment the result.
+
+```{r}
+T <- transitivity(DW, type="global")
+```
+
+Tenemos una transitividad de `r T` por lo al ser baja, nos quiere decir que los vertices del grafo estan poco agrupados.
+
+
+```{r}
+T1 <- transitivity(DW, type="local", vids = 1)
+```
+Sin embargo para el subgrafo más grande tenemos que la transitividad que hay es `r T1`
+
+*h)* Is this network compatible with the directed E-R model? And with the directed Barabasi-Albert's model? Do not compute anything new to answer these questions: you have have already obtained the key ingredients to answer them in previous points.
+Justify your answers and explain what they mean.
+
+Al igual que en el handout anterior sobre las redes de carretera, nos encontramos con redes que no se han formado aleatorialemente, cada decide a quién votar, y existen diferencias entre los posibles candidatos (a juzgar por la concentración de votos en algunos de estos y ausencia en otros). Aunque algunas características sí coinciden con ellas, como por ejemplo que no siguen power-law (como las E-R), o el ser un grafo conexo y ser disperso (como en Barabasi), no son del todo compatibles.
+
+*i)* It should be clear that the number of votes received by each individual is somehow related to some notion of "fitness" (the perceived capability of becoming an administrator of Wikipedia). **igraph** provides some functions to generate random networks with these features (based on the model explained in https://arxiv.org/pdf/cond-mat/0106565.pdf). Is this WikiVote network compatible with the 
+"Scale-free random graphs with vertex fitness scores" provided by the function **sample_fitness_pl**? Explain the model, and justify and comment the meaning of your answer.
+
+En el artículo tenemos que al trastarse de una red dirigida, debemos generar dos exponentes: uno para los grados de entrada y otros para los de salida.
+
+Es por ello, que vamos a cargar nuevamente los datos, creando un grafo dirigido.
+
+```{r}
+df = read.csv("WikiVote.txt", sep = "\t")
+g = graph_from_data_frame(df, directed = TRUE)
+```
+
+```{r}
+alpha_in = fit_power_law(degree(g, mode = 'in'))$alpha
+alpha_out = fit_power_law(degree(g, mode = 'out'))$alpha
+```
+
+```{r}
+order_g = gorder(g)
+size_g = gsize(g)
+den_g = edge_density(g, loops = FALSE)
+```
+
+```{r}
+ScaleFree = function() {
+  G = sample_fitness_pl(no.of.nodes = order_g, 
+                        no.of.edges = size_g, 
+                        exponent.out = alpha_out, 
+                        exponent.in = alpha_in, 
+                        loops = FALSE)
+  c(transitivity(G, type = "average"), transitivity(G), components(G)$no, diameter(G))
+}
+
+ii = replicate(100, ScaleFree())
+Resultado_i = rbind(c(transitivity(g, type = "average"), transitivity(g), components(g)$no, diameter(g)), 
+                 round(apply(ii, FUN = mean, MARGIN = 1), 4),
+                 round(apply(ii, FUN = sd, MARGIN = 1), 4),
+                 round(apply(ii, FUN = max, MARGIN = 1), 4))
+dimnames(Resultado_i) = list(c("Real", "Simulated", "St. Dev.", "Max."), c("Av. Clust.", "Trans.", "No. Conn. Comp.", "Diameter"))
+Resultado_i
+```
+
+Es por ello, que como los coeficientes del grafo simulado no se parecen a los coeficientes del grafo real, vemos que este modelo no es compatible con la red *WikiVote*.
+

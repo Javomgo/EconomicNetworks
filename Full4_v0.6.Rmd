@@ -1,0 +1,171 @@
+---
+title: "Handout 4"
+output: html_document
+---
+**Students' names**
+
+* Javier Ortiz Montenegro
+* Immanuel Mbithi Mutua
+* Jorge Lazo R.
+
+
+```{r global_options, include=FALSE}
+#adapt it at your taste and convenience
+knitr::opts_chunk$set(fig.width=8, fig.height=8, fig.align="center", echo=TRUE, warning=FALSE, message=FALSE)
+```
+
+
+```{r}
+library(igraph)
+library(igraphdata)
+data(UKfaculty)
+```
+
+
+*1)* The graph *UKfaculty* from **igraphdata** describes the personal friendship network of 81 UK university professors. It is a directed and weighted network (where an arc X->Y means that X reports to be friend of Y with relative friendship weight w>0).
+
+*A)* Extract from it an undirected and unweighted  network where an edge X-Y means that both individuals X, Y have declared to be friends of each other. Plot it.
+
+```{r}
+UKgraf = as.undirected(UKfaculty, mode = "mutual")
+plot(UKgraf)
+```
+
+
+*A.1)* Compute its order (it should be 81), its size and its density. Would you consider it sparse?
+
+```{r}
+n = gorder (UKgraf)
+m = gsize(UKgraf)
+dens = graph.density(UKgraf)
+```
+
+The order of $UKgraf$ is `r n`, its size is `r m`, and its density is `r dens`. We would consider it sparse because of the low density (`r dens`).
+
+*A.2)* Is it connected? If not, what percentage of the whole set of nodes covers the largest connected component?
+Would you consider it a giant connected component? 
+
+```{r}
+con = is.connected(UKgraf)
+tamano=max(components(UKgraf)[[2]])
+conexion=tamano/n
+```
+It is `r con` that the graph is connected, and it's percentage of connexion of the whole set of nodes in the largest connected component is `r conexion`. Because of the high percentage we consider it as a  giant component.
+
+
+*A.3)* Compute its mean degree. What is the (theoretical) relationship between the average degree and the density of a graph? Confirm it on this network
+
+```{r}
+mean.deg = mean(degree(UKgraf))
+```
+The mean degree of the graph is: `r mean.deg` The relationship between the average degree and the density of a graph is increasing. As the density increases, the mean degree increases too. 
+
+
+*A.4)* Compute the range and the median of the degrees. What are the meanings of these indices? Compare the median and the mean, and guess from their relationship the shape of the degree distribution (is it symmetric, does it have a right tail, or a left tail?).
+
+```{r}
+rangeUK=range(degree(UKgraf))
+medianUK=median(degree(UKgraf))
+```
+The range `r rangeUK` shows the lowest and highest degree of the graph. The median `r medianUK` shows the median of the degrees in the graph, in that case the median and mean have aproximate values. According to the range values obtained and the mean, we could deduce the distribution has a right tail.
+
+*A.5)* Plot its degree distribution in linear, log and log-log scale (do not take into account the nodes of degree 0, if any). Simply by looking at these graphics, answer the following two questions: Does this distribution seem to follow a power-law? And a Poisson (i.e., exponential) law?
+
+
+```{r}
+UKgrafsub = induced_subgraph(UKgraf, v=V(UKgraf)[degree(UKgraf)>0])
+
+plot(degree_distribution(UKgrafsub),pch=20,main="Degree Distribution linear",xlab="Degree",ylab="Probability of degree",type="o")
+```
+
+
+```{r}
+plot(degree_distribution(UKgrafsub, cumulative = TRUE),pch=20, log = 'y', main="Degree Distribution log",xlab="Degree",ylab="Probability of degree",type="o")
+```
+
+```{r}
+plot(degree_distribution(UKgrafsub, cumulative = TRUE),pch=20, log = 'xy', main="Degree Distribution log-log",xlab="Degree",ylab="Probability of degree",type="o")
+```
+The degree distribution in log scale seems to follow a power-law, but if we look at the log-log scale it's clear it follows a Poisson law.
+
+*A.6)* Compute its diameter, its average distance, and its 90% effective diameter (if it is not connected, compute them on the largest connected component). 
+
+
+```{r}
+UKbig = induced_subgraph(UKgraf, v = groups(components(UKgraf))[[1]])
+diam = diameter(UKbig)
+mean.dist = mean_distance(UKbig)
+
+f = function(x){length(unlist(ego(UKbig, order = x, nodes = V(UKbig))))/gorder(UKbig)^2}
+r.hop.plot = {sapply(1:diameter(UKbig), FUN = f)}
+effe.diam = min(which(r.hop.plot>=0.9))
+```
+
+
+The diameter is: `r diam`, the average distance: `r mean.dist`, and the 90% effective diameter is: `r effe.diam`
+
+*A.7)* Compute its average clustering coefficient and its transitivity coefficient.  What do these values tell you about the clustering coefficient of the nodes with very large degree?
+
+```{r}
+aver.clus = transitivity(UKgraf, type="average")
+
+tran.coef<-transitivity(UKgraf, type="global")
+
+```
+The average clustering coefficient is: `r aver.clus` and the transitivity coefficient is: `r tran.coef`. That values means that the clustering coefficient of the nodes with very large degree is lower than the clustering coefficient of the nodes with less degree, as long as the transitivity coefficient gives more weight to the nodes with more degree.
+
+*B)* Now, extract from the original *UKfaculty* a new undirected and unweighted network  where an edge X-Y means that both individuals X, Y have declared to be "stronger than average" friends of each other (friends with weight larger than the mean friendship weight, which you will have to compute beforehand). Compute for this new graph: its density; the percentage of the whole set of nodes covered by its largest connected component; the range, the mean and the median of the degrees; the diameter, average distance, and 90% effective diameter of its largest connected component; its average clustering coefficient and its transitivity coefficient. Comment the differences observed between the values obtained in this network of "strong friendship"and the "any friendship network" studied in (A). Do you find the differences (or the lack of them) reasonable?
+
+
+```{r}
+mean.weight = mean(E(UKfaculty)$weight)
+UKsf0 = delete.edges(UKfaculty, which(E(UKfaculty)$weight < mean.weight))
+UKsf = as.undirected(UKsf0, mode = 'mutual')
+```
+
+```{r}
+n1 = gorder (UKsf)
+m1 = gsize(UKsf)
+dens1 = graph.density(UKsf)
+```
+The order of $UKsf$ is `r n1`, its size is `r m1`, and its density is `r dens1`. We would consider, it is more sparse than former graf (A), since the low density is (`r dens1`).
+```{r}
+con1 = is.connected(UKsf)
+tamano1=max(components(UKsf)[[2]])
+conexion1=tamano1/n1
+```
+It is `r con1` that the graph is connected, and it's percentage of connexion of the whole set of nodes is much lower `r conexion1`. Even if it is a giant component the biggest component in graph (B) is smaller than biggest component in graph (A) 
+
+```{r}
+mean.deg1 = mean(degree(UKsf))
+rangeUK1=range(degree(UKsf))
+medianUK1=median(degree(UKsf))
+```
+The mean degree of the graph is: `r mean.deg1` which is lower than that of the former graph (A)
+The range `r rangeUK1` shows the lowest and highest degree of the former graph. The highest value has also become shorter.
+The median `r medianUK1` shows the median of the degrees in the graph, in that case the median and mean have aproximate values too. This value has also become shorter than that before (A) but still shows a right tail.
+
+```{r}
+UKbig1 = induced_subgraph(UKsf, v = groups(components(UKsf))[[2]])
+diam1 = diameter(UKbig1)
+mean.dist1 = mean_distance(UKbig1)
+
+f1 = function(x){length(unlist(ego(UKbig1, order = x, nodes = V(UKbig1))))/gorder(UKbig1)^2}
+r.hop.plot1 = {sapply(1:diameter(UKbig1), FUN = f1)}
+effe.diam1 = min(which(r.hop.plot1>=0.9))
+```
+The diameter is: `r diam1`, the average distance: `r mean.dist1`, and the 90% effective diameter is: `r effe.diam1`. It makes sense since graph (B) is more dispersed than graph (A) and that means the shorter path between nodes gets larger.
+
+
+```{r}
+aver.clus1 = transitivity(UKsf, type="average")
+
+tran.coef1<-transitivity(UKsf, type="global")
+```
+The average clustering coefficient is: `r aver.clus1`. This value is lower than the other graph (A). 
+The transitivity coefficient is: `r tran.coef1`, which is also lower than before (A).
+It is explained by the same reason, the dispersion in graph (B) is bigger than in graph (A)
+
+All this differences are reasonable. We have less edges because it is harder to find a mutual stronger than average friendship, and that explain the values we have obtained.
+
+

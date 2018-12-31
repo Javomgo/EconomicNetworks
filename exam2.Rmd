@@ -1,0 +1,171 @@
+---
+title: "Final exam. 2nd part"
+output: html_document
+---
+
+<font size="4"> **Name: Javier Ortiz Montenegro**     </font> 
+
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=8, fig.align="center", echo=TRUE, warning=FALSE, message=FALSE,autodep = TRUE,cache=TRUE)
+library(knitr)
+library(printr)
+library(igraph)
+```
+
+
+<font size="1"> **Instructions:** This part is worth 5.5 points (plus 1 bonus point for *(h)*). You must provide the Rmd and html files with your answers through the *Final Exam* task. Do not change the global options chunk, except, if you feel it necessary, the figures' dimensions (in particular, the resulting html file must contain the displayed code chunks). The grading will take into account the cleanness of the html file. When explanations or comments are asked for, please remember to provide them. But, again,  a typical explanation/comment should be a couple of sentences long, and unnecessarily long answers will be penalized. You can provide your answers in Catalan, Spanish,  English, or French. </font> 
+
+
+**1)** The files **GA_edges.txt** and **GA_nodes.txt** contain the links and nodes (with several attributes) of the sexual contact network among "Grey's Anatomy" characters in seasons 1-8. Define a network with these data frames, and make sure that its nodes have as attributes at least their names and (anatomic) sex.
+
+```{r}
+df.ed = read.csv('GA_edges.txt', sep = "\t")
+df.no = read.csv('GA_nodes.txt', sep = "\t")
+g = graph_from_data_frame(df.ed, directed = FALSE)
+
+for(i in vertex_attr(g)$name){
+  g = set_vertex_attr(g, name = "sex", index = i, value = as.character(df.no[i,2]))
+  g = set_vertex_attr(g, name = "race", index = i, value = as.character(df.no[i,3]))
+  g = set_vertex_attr(g, name = "birthyear", index = i, value = as.character(df.no[i,4]))
+  g = set_vertex_attr(g, name = "position", index = i, value = as.character(df.no[i,5]))
+  g = set_vertex_attr(g, name = "season", index = i, value = as.numeric(df.no[i,6]))
+  g = set_vertex_attr(g, name = "sign", index = i, value = as.character(df.no[i,7]))
+  g = set_vertex_attr(g, name = "name", index = i, value = as.character(df.no[i,1]))
+}
+```
+
+*a)* Provide a statistical summary of this network: order, number of nodes of each sex, size, density, number of connected components, **size of the largest connected component if there are more than one**, average degree, scatter plot of its degrees distribution, average distance, diameter, and average clustering coefficient. Plot it with the nodes labelled with the characters' names and differently colored with their sex. 
+
+```{r}
+n = gorder (g)
+nm = sum(vertex_attr(g)$sex == 'M')
+nf = sum(vertex_attr(g)$sex == 'F')
+m = gsize(g)
+dens = graph.density(g)
+comp = components(g)$no
+max.tam = max(components(g)$csize)
+gmean = round(mean(degree(g)),4)
+plot(degree_distribution(g),type="o",pch=20,main="Degrees distribution",xlab="Degree",ylab="Proportion")
+distancia = round(mean_distance(g),4)
+diametro = diameter(g)
+av.clus = transitivity(g,type="average")
+```
+```{r tabla_resumen0, include=FALSE}
+
+Tabla_Resultados <- matrix( c(n, nm, nf, m, dens, comp, max.tam, gmean, distancia, diametro, av.clus),
+             nrow = 1, ncol = 11)
+dimnames(Tabla_Resultados) <- list(c("Coeficientes"), c("Orden", "Número de nodos hombre", "Número de nodos mujer", "Tamaño", "Densidad", "Componentes conectados", "tamaño del componente mayor", "Grado medio", "Distancia media", "Diametro", "Coeficiente de clustering"))
+```
+```{r echo=FALSE, fig.align="center", out.width='40%', out.height='40%', table-Resultados0}
+knitr::kable(Tabla_Resultados, caption = "Summary")
+```
+```{r}
+V(g)$color = ifelse(vertex_attr(g)$sex == "M", "red", "green")
+plot(g, vertex.color = V(g)$color, main="Personajes")
+legend("topright",pch=c(20,20),col=c("red","green"),legend=c("Hombre","Mujer"),cex=1)
+```
+
+
+*a.2)* Comment the meaning and implications (for this specific network) of the density, number of connected components and size of the largest, average degree, average distance,  and average clustering coefficient values obtained.
+
+La densidad es `r dens`, no se puede decir que el grafo sea disperso. Y en este caso concreto, dicho coeficiente de densidad nos mostraría como en la serie los personajes no suelen ser muy fans de la monogamia.
+La cantidad de componentes conectados son `r comp`, y el mayor `r max.tam`. Esto nos muestra como en la serie se hay `r comp` grupos de personas que tienen relaciones sexuales entre ellos englobando el mayor de estos `r max.tam` personajes.
+Un grado medio de `r gmean` implica que de media los personajes han tenido relaciones con `r gmean` personas diferentes.
+La distancia media implica que las cadenas de relaciones sexuales son de media `r distancia` personas.
+Por ultimo el coeficiente de clustering `r av.clus` indica que no existen triangulos, por lo cual después de ver el grafo dibujado y comprobar que la mayoría de encuentos sexuales son entre hombres y mujeres en caso de haber encuentros homosexuales unicamente uno de esos nodos es bisexual. (Como se puede ver en el caso de Torres)
+
+
+*b)* Is this network bipartite? Justify your answer and explain its meaning for this specific network. (Caution! **is_bipartite** does not answer this question. Find the right function to answer it, or find some other way to answer it without a predefined function.)
+
+```{r}
+V(g)$type = ifelse(vertex_attr(g)$sex == "M", TRUE, FALSE)
+plot(g, vertex.label=NA, vertex.size=7, layout=layout_as_bipartite)
+```
+
+
+No, no lo es, ya que podría ser bipartito si unicamente hubieran encuentros entre hombres y mujeres, podríamos colocar hombres a un lado y mujeres al otro y veríamos un grafo bipartito.
+No obstante, como podemos ver en el caso de Torres, hay personajes bisexuales, lo que elimina la posibilidad del grafo bipartito.
+
+*c)* Who are the most central 3 nodes according to degree, closeness, betweenness and eigenvector centrality? Comment the differences you found, if any.
+
+```{r}
+cent.deg=attr(sort(igraph::degree(g),decreasing=TRUE),"names")[1:3]
+cent.clo=attr(sort(igraph::closeness(g), decreasing = TRUE), "names")[1:3]
+cent.bet=attr(sort(igraph::betweenness(g),decreasing=TRUE),"names")[1:3]
+cent.eig=attr(sort(igraph::eigen_centrality(g)$vector,decreasing=TRUE),"names")[1:3]
+```
+```{r tabla_resumen1, include=FALSE}
+
+Tabla_Resultados1 <- matrix( c(cent.deg[1], cent.deg[2], cent.deg[3], cent.clo[1], cent.clo[2], cent.clo[3], cent.bet[1], cent.bet[2], cent.bet[3], cent.eig[1], cent.eig[2], cent.eig[3]),
+             nrow = 3, ncol = 4)
+dimnames(Tabla_Resultados1) <- list(c("Nodo más central", "Segundo nodo", "Tercer nodo"), c("Degree", "Closeness", "Betweenness", "Eigenvector"))
+```
+```{r echo=FALSE, fig.align="center", out.width='40%', out.height='40%', table-Resultados1}
+knitr::kable(Tabla_Resultados1, caption = "Centrality")
+```
+
+La mayoría de nodos aparecen en las cuatro centralidades, así que unicamente comentar que son los que más cantidad de encuentros sexuales tienen por aparecer en la centralidad por degree, están en el centro en cuanto a distancia debido a la centralidad por cercania y es necesario pasar por ellos para llegar de un lado a otro (Excepto Torres). Comentar también como Altman aun sin aparecer en el resto de centralidades aparece en la de Betweenness debido a que su encuentro sexual con Owen hace que sea el nodo de union entre dos partes de la componente conexa. La centralidad por eigenvector de nuevo muestra los mismos nodos que Degree ya que tienen relaciones entre nodos de grado alto.
+
+*d)* If you wanted to test one single character for sexually transmitted infections, who would he/she be? Why?
+
+Elegiría a Sloan. Dejando de lado el hecho de que está en el top 3 de las 4 centralidades considero muy importante que es el nodo más central en Betweenness, por lo tanto si hubiera una infección de transmisión sexual es muy probable que haya pasado por el en algún momento. 
+
+*e)* P. S. Bearman, J. Moody and K. Stovel (in their classic "Chains of affection: The structure of adolescent romantic and sexual networks" (*Am. J. Soc.* 110 (2004), 44-91) on romantic relations in a High School which I have mentioned several times in the course) found a prohibition against coupling with a former partner’s former partner’s former partner (and justified it on status implications). Without taking into account the time of the sexual contacts (which are not available in our network), what kind of structures does this rule "forbid"? Check whether this network satisfies this prohibition or not. (Hint: Take a glance at the function **kcycle.census** in the **sna** package.)
+
+```{r}
+library(sna)
+adj = get.adjacency(g, sparse=FALSE)
+prohi = sum(kcycle.census(dat=adj,maxlen = 4,mode="graph")$cycle.count) > 0
+prohi = ifelse(prohi == TRUE, "falso", "cierto")
+```
+
+Esta regla prohibe los ciclos de longitud 4. Es `r prohi` que esta red satisface la prohibición.
+
+*f)* Is this network consistent with the E-R model? And with the basic undirected Barabasi-Albert's model? Did you find the answers surprising?
+
+```{r}
+set.seed(111)
+N =1000
+R=100
+sample = replicate(N, transitivity(sample_gnm(n ,m)))
+sum(which(sample>transitivity(g)))/N #p- value
+round (c (quantile (sample ,0.025),
+quantile (sample ,0.975)),5)
+```
+```{r}
+set.seed(111)
+sample = replicate(N, transitivity(sample_pa(n = n,m = gmean, directed=FALSE, out.pref=TRUE)))
+sum(which(sample>transitivity(g)))/N #p- value
+round (c (quantile (sample ,0.025),
+quantile (sample ,0.975)),5)
+```
+
+Según los p-valor de ambos contrastes de hipotesis podemos afirmar que esta red es consistente tanto con un modelo E-R como con un Barabasi-Albert basico.
+
+En cierta manera si que considero estas respuestas como algo sorprendente ya que una red de relaciones sexuales no me parece algo que debiera ser aleatorio.
+
+*g)* Partition the network into communities using the maximum modularity greedy algorithm (as implemented in **cluster_fast_greedy**). Plot the graph highlighting the communities.
+What is the modularity value of this partition? And what is the meaning of this value (in the context of this example, not the abstract definition)? 
+
+```{r}
+c.fg=cluster_fast_greedy(g)
+mod = modularity(g,membership=membership(c.fg))
+coords=layout_with_fr(g)
+plot(c.fg, g, layout=coords)
+```
+
+La modularidad de esta partición es `r mod`. Esto significa que el número de relaciones sexuales entre nodos de las distintas comunidades son mayores de las esperadas, es decir, los personajes de la serie no se contentan con tener encuentros sexules únicamente con gente de su comunidad y van a otras comunidades a buscar más compañeros sexuales.
+
+*h)* **Extra bonus:** Are the  communities found in the previous point explained by some of the nodes' attributes contained in the nodes data frame
+
+```{r}
+pal <- rainbow(n=length(unique(V(g)$race)))
+V(g)$color2 = pal[as.numeric(as.factor(V(g)$race))]
+plot(g, vertex.color = V(g)$color2, main="Personajes")
+legend("topright",pch=c(20,20),col=c("red","blue", "green"),legend=c("Negro", "Blanco", "Otro"),cex=1)
+```
+
+El atributo que explica en mayor medida las comunidades encontradas podría ser el de raza, viendo como los personajes negros tienden a relacionarse entre ellos, no obstante no explica la mayoría de comunidades encontradas en la componente conexa gigante.
+

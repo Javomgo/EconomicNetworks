@@ -1,0 +1,212 @@
+---
+title: "Handout 7"
+output: html_document
+---
+
+* Name 1: Victor Antonio Marín Juarros
+* Name 2: David Sanchez Rodriguez
+* Name 3: Javier Ortiz Montenegro
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=8, fig.align="center", echo=TRUE, warning=FALSE, message=FALSE,autodep = TRUE,cache=TRUE)
+library(knitr)
+library(printr)
+library(igraph)
+```
+
+
+
+The file **euroroad.txt** contains the links of the international E-road network (https://en.wikipedia.org/wiki/International_E-road_network) between the European cities given in the file **euroroad_city_names.txt**. Each node in this network represents a city and an edge between two nodes denotes that they are connected by an E-road without any other city in-between. 
+
+```{r}
+er.df = read.table("euroroad.txt")
+nombres = read.table("euroroad_city_names.txt")
+er = graph_from_data_frame(er.df)
+```
+
+*a)* Provide a statistical summary of this network (order, size, density, number of connected components, average degree, average distance, diameter, average clustering coefficient, transitivity, etc.). 
+
+```{r}
+n = gorder (er)
+m = gsize(er)
+dens = graph.density(er)
+comp = components(er)$no
+max.tam = max(components(er)$csize)
+grados = degree(er)
+gmean = round(mean(grados),4)
+diametro = diameter(er)
+distancia = round(mean_distance(er),2)
+av.clus = transitivity(er,type="average")
+tran.coef = transitivity(er, type="global")
+```
+```{r tabla_resumen0, include=FALSE}
+
+Tabla_Resultados <- matrix( c(n, m, dens, comp, max.tam, gmean, diametro, distancia, av.clus, tran.coef),
+             nrow = 1, ncol = 10)
+dimnames(Tabla_Resultados) <- list(c("Coeficientes"), c("Orden", "Tamaño", "Densidad", "Componentes", "Tamaño componente mayor", "Grado medio", "Diametro", "Distancia", "Coeficiente de clustering", "Coeficiente de transitividad"))
+```
+```{r echo=FALSE, fig.align="center", out.width='40%', out.height='40%', table-Resultados0}
+knitr::kable(Tabla_Resultados, caption = "Summary")
+```
+
+*b)* What are the most central cities in this network? Justify the centrality measure(s) used to answer this question. Are your results surprising? (If your most central city is a mid-sized city in Yorkshire, revise your work ;-))
+
+```{r}
+betweenness.cent = betweenness(er)
+betweenness.cent = as.data.frame(betweenness.cent)
+betweenness.cent$nodos <- rownames(betweenness.cent)
+betweenness.cent = betweenness.cent[order(betweenness.cent$betweenness.cent ,decreasing = TRUE),]
+```
+Las ciudades más centrales son: `r nombres[betweenness.cent[1:10,2],1]`. No considero que sean unos resultados sorprendentes ya que son ciudades ubicadas de manera central Europa, lo cual tiene sentido.
+
+*c)* Is this road network compatible with the E-R model? Did you expect your answer?
+
+Siendo H0 nuestro grafo compatible con un grafo E-R y Ha no compatible:
+
+```{r}
+set.seed(111)
+N =1000
+R=100
+sample = replicate(N, transitivity(sample_gnm(n ,m)))
+sum(which(sample>transitivity(er)))/N #p- value
+round (c (quantile (sample ,0.025),
+quantile (sample ,0.975)),5)
+```
+Se rechaza H0, por lo tanto podemos decir que nuestro grafo no es compatible con un grafo E-R.
+
+
+```{r}
+set.seed(111)
+ER = function(x,y) {
+  G = sample_gnm(x, y)
+  
+  c(graph.density(G), components(G)$no, max(components(G)$csize), round(mean(degree(G)),4), diameter(G), mean_distance(G),   transitivity(G, type="average"), transitivity(G))
+}
+X1 = replicate(R, ER(n, m))
+erre = c(rowMeans(X1))
+```
+```{r tabla_resumen, include=FALSE}
+
+Tabla_Resultados <- matrix( c(dens, erre[1], comp, erre[2], max.tam, erre[3], gmean, erre[4], diametro, erre[5], distancia, erre[6], av.clus, erre[7], tran.coef, erre[8]),
+             nrow = 2, ncol = 8)
+dimnames(Tabla_Resultados) <- list(c("EuroRoad","Erdös–Rényi"), c("Densidad", "Componentes", "Tamaño componente mayor", "Grado medio", "Diametro", "Distancia", "Coeficiente de clustering", "Coeficiente de transitividad"))
+```
+```{r echo=FALSE, fig.align="center", out.width='40%', out.height='40%', table-Resultados1}
+knitr::kable(Tabla_Resultados, caption = "Coeficientes EuroRoad vs Erdös–Rényi")
+```
+
+También se puede decir que no es compatible ya que, como se puede comprobar en la tabla los coeficientes son totalmente distintos a los esperados en un grafo E-R. Tiene sentido ya que es poco probable que una red de carreteras se forme de manera aleatoria.
+
+*d)* Is this road network compatible with the configuration model? Did you expect your answer?
+
+Siendo H0 nuestro grafo compatible con un grafo configuration model y Ha diferente:
+
+```{r}
+set.seed(111)
+sample = replicate(N, transitivity(sample_degseq(grados, method = 'simple')))
+sum(which(sample>transitivity(er)))/N #p- value
+round (c (quantile (sample ,0.025),
+quantile (sample ,0.975)),5)
+```
+
+Se rechaza la Hipotesis nula, por lo tanto podemos afirmar que una red de carreteras no es compatible con un configuration model.
+
+```{r}
+set.seed(111)
+CM = function(x) {
+  G = sample_degseq(x, method = 'simple')
+  
+  c(graph.density(G), components(G)$no, max(components(G)$csize), round(mean(degree(G)),4), diameter(G), mean_distance(G),   transitivity(G, type="average"), transitivity(G))
+}
+X2 = replicate(R, CM(grados))
+cm = c(rowMeans(X2))
+```
+```{r tabla_resume2, include=FALSE}
+
+Tabla_Resultados <- matrix( c(dens, cm[1], comp, cm[2], max.tam, cm[3], gmean, cm[4], diametro, cm[5], distancia, cm[6], av.clus, cm[7], tran.coef, cm[8]),
+             nrow = 2, ncol = 8)
+dimnames(Tabla_Resultados) <- list(c("EuroRoad","Configuration Model"), c("Densidad", "Componentes", "Tamaño componente mayor", "Grado medio", "Diametro", "Distancia", "Coeficiente de clustering", "Coeficiente de transitividad"))
+```
+```{r echo=FALSE, fig.align="center", out.width='40%', out.height='40%', table-Resultados2}
+knitr::kable(Tabla_Resultados, caption = "Coeficientes EuroRoad vs Configuration Model")
+```
+
+
+De la misma manera, comparando la tabla de los coeficientes se aprecia que también son distintos de los esperados en un configuration model. Al igual que en el caso comparando con E-R no resultan sorprendentes estos resultados.
+
+*e)* Is this road network compatible with the basic Barabasi-Albert's model?  Did you expect your answer?
+
+Siendo H0 nuestro grafo compatible con un grafo básico Barabasi-Albert's y Ha diferente:
+
+```{r}
+set.seed(111)
+sample = replicate(N, transitivity(sample_pa(n = n,m = gmean, directed=FALSE, out.pref=TRUE)))
+sum(which(sample>transitivity(er)))/N #p- value
+round (c (quantile (sample ,0.025),
+quantile (sample ,0.975)),5)
+```
+Se rechaza la hipotesis nula, por lo tanto podemos afirmar que una red de carreteras no es compatible con un grafo básico Barabasi-Albert's.
+
+```{r}
+set.seed(111)
+BA = function(x, y) {
+  G = sample_pa(n = x, m = y,directed=FALSE, out.pref=TRUE)
+  
+  c(graph.density(G), components(G)$no, max(components(G)$csize), round(mean(degree(G)),4), diameter(G), mean_distance(G),   transitivity(G, type="average"), transitivity(G))
+}
+X3 = replicate(R, BA(n, gmean))
+ba = c(rowMeans(X3))
+```
+```{r tabla_resumen3, include=FALSE}
+
+Tabla_Resultados <- matrix( c(dens, ba[1], comp, ba[2], max.tam, ba[3], gmean, ba[4], diametro, ba[5], distancia, ba[6], av.clus, ba[7], tran.coef, ba[8]),
+             nrow = 2, ncol = 8)
+dimnames(Tabla_Resultados) <- list(c("EuroRoad","Barabasi-Albert's"), c("Densidad", "Componentes", "Tamaño componente mayor", "Grado medio", "Diametro", "Distancia", "Coeficiente de clustering", "Coeficiente de transitividad"))
+```
+```{r echo=FALSE, fig.align="center", out.width='40%', out.height='40%', table-Resultados3}
+knitr::kable(Tabla_Resultados, caption = "Coeficientes EuroRoad vs Barabasi-Albert's")
+```
+
+
+Al igual que en los dos casos anteriores podemos comprobar que en la tabla de coeficientes la red de carreteras tiene unos resultados totalmente distintos a los esperados en un modelo basico de Barabasi-Albert's. No obstante, es el unico caso en que el coeficientes de clustering se parece en cierta medida. 
+Tampoco son resultados sorprendentes ya que este modelo tambien es un modelo aleatorio y una red de carreteras tiene sentido que no se forme de manera aleatoria.
+
+*f)* If we add an initial attractiveness $a$ to all nodes, so that the probability of an old node $v$ to be linked by a new node is  proportional to $a+\deg(v)$, the absolute value of the exponent in the power law describing its degree distribution turns out to be $3+a/c$ (with $c$ the mean number of links of the new nodes). This exponent can be estimated with **igraph**'s function **fit_power_law**. 
+
+Now, is the E-road network compatible with Barabasi-Albert's model with initial attractiveness? Justify your answer, and comment whether you expected it.
+
+```{r}
+a = (fit_power_law(grados)$alpha * gmean) - 3
+sample = replicate(N, transitivity(sample_pa(n = n, m = gmean, directed = F, out.pref = T, zero.appeal = a)))
+sum(which(sample>transitivity(er)))/N #p- value
+round (c (quantile (sample ,0.025),
+quantile (sample ,0.975)),5)
+```
+
+Se rechaza la hipotesis nula, por lo tanto podemos afirmar que una red de carreteras no es compatible con un grafo Barabasi-Albert's con atracción inicial.
+
+```{r}
+set.seed(111)
+BA.a = function(x, y) {
+  G = sample_pa(n = x, m = y,directed=FALSE, out.pref=TRUE, zero.appeal = a)
+  
+  c(graph.density(G), components(G)$no, max(components(G)$csize), round(mean(degree(G)),4), diameter(G), mean_distance(G),   transitivity(G, type="average"), transitivity(G))
+}
+X4 = replicate(R, BA.a(n, gmean))
+ba.a = c(rowMeans(X4))
+```
+```{r tabla_resumen4, include=FALSE}
+
+Tabla_Resultados <- matrix( c(dens, ba.a[1], comp, ba.a[2], max.tam, ba.a[3], gmean, ba.a[4], diametro, ba.a[5], distancia, ba.a[6], av.clus, ba.a[7], tran.coef, ba.a[8]),
+             nrow = 2, ncol = 8)
+dimnames(Tabla_Resultados) <- list(c("EuroRoad","Barabasi-Albert's"), c("Densidad", "Componentes", "Tamaño componente mayor", "Grado medio", "Diametro", "Distancia", "Coeficiente de clustering", "Coeficiente de transitividad"))
+```
+```{r echo=FALSE, fig.align="center", out.width='40%', out.height='40%', table-Resultados4}
+knitr::kable(Tabla_Resultados, caption = "Coeficientes EuroRoad vs Barabasi-Albert's IA")
+```
+
+De la misma manera que todos los modelos anteriores podemos comprobar que los coeficientes distan mucho de los de la red de carreteras Europeas. Por lo tanto se puede afirmar que una red de carreteras no se genera de forma aleatoria.
+
+*g)* Well, how do you think a road network grows?
+
+Desde mi punto de vista creo que una red de carreteras crece por necesidad, no de forma aleatoria. Por lo tanto las ciudades más centrales y que es necesario atravesar van aumentando de grado mientras las ciudades del perimetro, al ser menos necesarias para la circulación, mantienen el grado constante o crece muy despacio.

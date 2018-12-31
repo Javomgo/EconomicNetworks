@@ -1,0 +1,46 @@
+---
+title: "Handout 5"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=8, fig.align="center", echo=TRUE, warning=FALSE, message=FALSE)
+library(knitr)
+library(igraph)
+```
+
+**1)**  Consider an undirected ring G with 250 nodes, labeled consecutively 1,2,...,250. The goal of this exercise is to see that adding a few new random edges to G radically decreases its average distance (and to use Monte Carlo methods).
+
+*a)* What is its average distance? 
+
+*b)* Now, chose equiprobably a new  (that is, not existing in G) edge incident to the node 1 and add it to G. What is the expected average distance of the new graph obtained in this way? Answer this question in the following two ways:
+
+*b.1)* Compute the average distance of each graph $G_i$ obtained by adding the edge from 1 to i, with i=3,..., 249, and then average them. This yields the exact value of this average distance.
+
+*b.2)* Use the Monte Carlo approach to estimate it (that is, generate randomly MANY such graphs, compute their average distances, and then estimate the expected average distance as the mean of this sample). Use **set.seed** to make your results reproducible.
+
+Check that the results obtained in both ways are similar.
+
+*c)* Now add to G *two* new (and different) random edges.  What is the resulting expected average distance? You can compute it exactly or estimate it (how many graphs would you have to build to compute it exactly?), at your convenience. 
+
+*d)* What happens with the diameter of G when we add one or two new random edges to it?
+
+
+**2)** The file **facebook_sample_anon.txt** is a data table containing the list of edges of an anonymized  sample of the Facebook friendship network. Download it on your computer,  upload it to R as a dataframe, and define an undirected graph with this list of edges.
+
+*a)* Is it connected? If it is not, replace it by its largest connected component.
+
+*b)* Compute its order, size, and density. Do you consider it sparse?
+
+*c)*  Compute the range, the mode, the mean and the median of its degrees. Explain their meaning.
+
+*d)* Plot its degrees distribution in linear and in log-log scale. Which is more helpful to understand this distribution?
+
+*e)* Compute its diameter, its average distance, and its 90% effective diameter.
+
+*f)* Plot a histogram of its clustering coefficients.
+
+*g)* Compute its average clustering coefficient and its transitivity coefficient. What do they tell you about the clustering coefficient of the nodes with large degree? Confirm it with a scatter plot of the degrees and the clustering coefficients of its nodes. Make this graph easy to understand, and comment what you see in it
+
+*h)* This graph was obtained by gathering all friends of 10 students enrolled in a course and establishing the friendship relations among the union of their friends. Can you make an educated guess about which are these 10 students?
+

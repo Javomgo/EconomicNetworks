@@ -1,0 +1,128 @@
+---
+title: "Handout 4"
+output: html_document
+---
+**Students' names**
+
+* Name
+* Name
+* ...
+
+```{r global_options, include=FALSE}
+#adapt it at your taste and convenience
+knitr::opts_chunk$set(fig.width=8, fig.height=8, fig.align="center", echo=TRUE, warning=FALSE, message=FALSE)
+```
+
+
+```{r}
+library(igraph)
+library(igraphdata)
+data(UKfaculty)
+```
+
+
+*1)* The graph *UKfaculty* from **igraphdata** describes the personal friendship network of 81 UK university professors. It is a directed and weighted network (where an arc X->Y means that X reports to be friend of Y with relative friendship weight w>0).
+
+*A)* Extract from it an undirected and unweighted  network where an edge X-Y means that both individuals X, Y have declared to be friends of each other. Plot it.
+
+```{r}
+UKgraf = as.undirected(UKfaculty, mode = "mutual")
+plot(UKgraf)
+```
+
+
+*A.1)* Compute its order (it should be 81), its size and its density. Would you consider it sparse?
+
+```{r}
+n = gorder (UKgraf)
+m = gsize(UKgraf)
+dens = graph.density(UKgraf)
+```
+
+The order of $UKgraf$ is `r n`, its size is `r m`, and its density is `r dens`. We would consider it sparse because of the low density (`r dens`).
+
+*A.2)* Is it connected? If not, what percentage of the whole set of nodes covers the largest connected component?
+Would you consider it a giant connected component? 
+
+```{r}
+is.connected(UKgraf)
+tamano=components(UKgraf)[[2]][1]
+conexion=tamano/n
+conexion
+```
+Its not connected, and it's percentage is `r conexion`. Because of the high percentage we consider it as a  giant component.
+
+
+*A.3)* Compute its mean degree. What is the (theoretical) relationship between the average degree and the density of a graph? Confirm it on this network
+
+```{r}
+mean(degree(UKgraf))
+(n-1)*dens
+```
+The relationship between the average degree and the density of a graph is as the density increases, the mean degree increases too. 
+
+
+*A.4)* Compute the range and the median of the degrees. What are the meanings of these indices? Compare the median and the mean, and guess from their relationship the shape of the degree distribution (is it symmetric, does it have a right tail, or a left tail?).
+
+```{r}
+rangeUK=range(degree(UKgraf))
+medianUK=median(degree(UKgraf))
+```
+The range `r rangeUK` shows the lowest and highest degree of the graph. The median `r medianUK` shows the median of the degrees in the graph, in that case the median and mean have aproximate values. According to the range values obtained and the mean, we could deduce the distribution has a right tail.
+
+*A.5)* Plot its degree distribution in linear, log and log-log scale (do not take into account the nodes of degree 0, if any). Simply by looking at these graphics, answer the following two questions: Does this distribution seem to follow a power-law? And a Poisson (i.e., exponential) law?
+
+
+```{r}
+
+deg.distUKgraf=c(1-degree_distribution(UKgraf, cumulative = TRUE)[-1],1)
+round(deg.distUKgraf,4)
+round(degree_distribution(UKgraf),4)
+par(mfrow=c(2,1))
+
+plot(0:max(degree(UKgraf)), degree_distribution(UKgraf),pch=20,main="Degree density",xlab="Degree",ylab="Probability of degree",type="o")
+
+
+```
+
+
+```{r}
+plot(0:max(degree(UKgraf)), deg.distUKgraf,pch=20,main="Degree density",xlab="Degree",ylab="Cumulative Distribution",type="o")
+```
+
+```{r}
+plot(0:max(degree(UKgraf)), deg.distUKgraf,pch=20,main="Degree cumulative distribution",xlab="Degree",ylab="Cumulative Distribution",type="o")
+```
+
+
+*A.6)* Compute its diameter, its average distance, and its 90% effective diameter (if it is not connected, compute them on the largest connected component). 
+```{r}
+?transitivity
+```
+
+```{r}
+diameter(UKgraf, unconnected = TRUE)
+ave.dist=mean_distance(UKgraf)
+
+effe.diam<-get_diameter(UKgraf, directed=T)
+get_diameter(UKgraf, directed=T)
+
+```
+*A.7)* Compute its average clustering coefficient and its transitivity coefficient.  What do these values tell you about the clustering coefficient of the nodes with very large degree?
+
+```{r}
+aver.clus = transitivity(UKgraf, type="average")
+
+tran.coef<-transitivity(UKgraf, type="global")
+
+```
+The average clustering coefficient is: `r aver.clus` and the transitivity coefficient is: `r tran.coef`. That values means that the clustering coefficient of the nodes with very large degree is lower than the clustering coefficient of the nodes with less degree, as long as the transitivity coefficient gives more weight to the nodes with more degree.
+
+*B)* Now, extract from the original *UKfaculty* a new undirected and unweighted network  where an edge X-Y means that both individuals X, Y have declared to be "stronger than average" friends of each other (friends with weight larger than the mean friendship weight, which you will have to compute beforehand). Compute for this new graph: its density; the percentage of the whole set of nodes covered by its largest connected component; the range, the mean and the median of the degrees; the diameter, average distance, and 90% effective diameter of its largest connected component; its average clustering coefficient and its transitivity coefficient. Comment the differences observed between the values obtained in this network of "strong friendship"and the "any friendship network" studied in (A). Do you find the differences (or the lack of them) reasonable?
+
+```{r}
+total.weight = sum(strength(UKfaculty))/2
+ave.wei = total.weight/m
+
+```
+

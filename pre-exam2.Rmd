@@ -1,0 +1,55 @@
+---
+title: "Final exam. 2ond part"
+output: html_document
+---
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=8, fig.align="center", echo=TRUE, warning=FALSE, message=FALSE,autodep = TRUE,cache=TRUE)
+library(knitr)
+library(printr)
+library(igraph)
+```
+
+
+**1)** I did not want to finish the course without introducing one of my pet networks. The files **GA_edges.txt** and **GA_nodes.txt** contain the links and nodes (with several attributes) of the sexual contact network among "Grey's Anatomy" characters in seasons 1-8. (Btw, a nice TFM topic: to automatically extract from the episodes' Short Summaries provided in the Grey's Anatomy Wiki (https://greysanatomy.fandom.com/wiki/Grey%27s_Anatomy_Universe_Wiki) (a richest version of) this sexual contact network for the whole 15 seasons so far period and to analyze the network with a suitable stochastic model.)
+
+Define a network with these data frames, and make sure that its nodes have as attributes at least their names and (anatomic) sex.
+
+```{r}
+df.ed = read.csv('GA_edges.txt', sep = "\t")
+df.no = read.csv('GA_nodes.txt', sep = "\t")
+g = graph_from_data_frame(df.ed, directed = FALSE)
+
+for(i in vertex_attr(g)$name){
+  g = set_vertex_attr(g, name = "sex", index = i, value = as.character(df.no[i,2]))
+  g = set_vertex_attr(g, name = "race", index = i, value = as.character(df.no[i,3]))
+  g = set_vertex_attr(g, name = "birthyear", index = i, value = as.character(df.no[i,4]))
+  g = set_vertex_attr(g, name = "position", index = i, value = as.character(df.no[i,5]))
+  g = set_vertex_attr(g, name = "season", index = i, value = as.numeric(df.no[i,6]))
+  g = set_vertex_attr(g, name = "sign", index = i, value = as.character(df.no[i,7]))
+  g = set_vertex_attr(g, name = "name", index = i, value = as.character(df.no[i,1]))
+}
+vertex_attr(g)$sex
+```
+
+
+*a)* Provide a statistical summary of this network: order, number of nodes of each sex, size, density, number of connected components, average degree, scatter plot of its degrees distribution, average distance, diameter, average clustering coefficient. Plot it with the nodes labelled with the characters' names and differently colored with their sex.
+
+```{r}
+n = gorder (g)
+nm = sum(vertex_attr(g)$sex == 'M')
+nf = sum(vertex_attr(g)$sex == 'F')
+m = gsize(g)
+dens = graph.density(g)
+comp = components(g)$no
+gmean = round(mean(degree(g)),4)
+plot(degree_distribution(g),type="o",pch=20,main="Degrees distribution",xlab="Degree",ylab="Proportion")
+distancia = round(mean_distance(g),4)
+diametro = diameter(g)
+av.clus = transitivity(g,type="average")
+V(g)$color = ifelse(vertex_attr(g)$sex == "M", "red", "green")
+plot(g, vertex.color = V(g)$color, main="Personajes")
+legend("topright",pch=c(20,20),col=c("red","green"),legend=c("Hombre","Mujer"),cex=1)
+```
+
